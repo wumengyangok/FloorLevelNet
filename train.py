@@ -274,8 +274,8 @@ def main():
     val_data = FLNDataset(csv_file=None, phase='val')
     val_loader = DataLoader(val_data, batch_size=1, shuffle=True, num_workers=0)
 
-    real_data = FLNDataset(csv_file=None, phase='real')
-    real_loader = DataLoader(real_data, batch_size=1, shuffle=True, num_workers=0)
+    #real_data = FLNDataset(csv_file=None, phase='real')
+    #real_loader = DataLoader(real_data, batch_size=1, shuffle=True, num_workers=0)
 
     criterion, criterion_val = loss.get_loss(args)
     if args.aux_loss:
@@ -312,10 +312,10 @@ def main():
 
         if (args.use_hanet and args.hanet_lr > 0.0):
             i = train(train_loader, net, optim, epoch, writer, scheduler, args.max_iter, optim_at, scheduler_at)
-            train_loader.sampler.set_epoch(epoch + 1)
+            # train_loader.sampler.set_epoch(epoch + 1)
         else:
             i = train(train_loader, net, optim, epoch, writer, scheduler, args.max_iter)
-            train_loader.sampler.set_epoch(epoch + 1)
+            # train_loader.sampler.set_epoch(epoch + 1)
         epoch += 1
         torch.save(net, os.path.join(model_dir, configs))
 
@@ -427,14 +427,14 @@ def run_real_cases(real_loader, net, writer):
     net.eval()
     for real_idx, data in enumerate(real_loader):
         inputs, img_name,  = data['X'], data['PA']
-        print(img_name)
+        # print(img_name)
         with torch.no_grad():
             output, attention_map, output_y = net(inputs.cuda(), attention_map=True)
-        print(output_y.shape)
-        print(attention_map)
+        # print(output_y.shape)
+        # print(attention_map)
         predictions = output.data.max(1)[1].cpu()
         planes = output_y.data.max(1)[1].cpu()
-        print(predictions.shape)
+        # print(predictions.shape)
         predictions = np.asarray(predictions[0], dtype=np.uint8)
         planes = np.asarray(planes[0], dtype=np.uint8)
         # show(predictions)
@@ -444,6 +444,7 @@ def run_real_cases(real_loader, net, writer):
         im = cv2.resize(im, dsize=(360, 480))
 
         cv2.imwrite(img_name[0][:-4] + '_result.png', im)
+        # quit()
 
         # cv2.imwrite()
 
@@ -558,180 +559,180 @@ def post_process(im, line, planes):
     im = cv2.resize(im, dsize=(320, 320))
     im = np.array(im)
     planes = np.array(planes)
-    print(planes.shape)
+    # print(planes.shape)
     segment = planes
 
     # show(segment * 50)
     # if plane_type
 
-    for plane_type in [3]:
-        # show((segment == plane_type).astype(np.uint8) * 255)
+    for plane_type in [1, 2, 3]:
         # continue
         labeled, nr_objects = ndimage.label((segment == plane_type).astype(np.uint8))
-        # for id in range(nr_objects + 1):
-        mask = ((segment == plane_type).astype(np.uint8)).astype(np.uint8)
-        if np.sum(mask) > np.sum(mask * (segment == plane_type)):
-            continue
-        if np.sum(mask) < 5000:
-            continue
-        # show(mask * 255)
-        idx = np.where(mask == 1)
-        # original_shape = im.shape
-        # im = cv2.resize(line, dsize=(480, 360))
-        # cluster_frame = cv2.imread(video_dir + file_name + '_level.png', cv2.IMREAD_GRAYSCALE) // 25
-        # range_frame =
-        # Find the left/right range
-        left_most = np.min(idx[1], axis=0)
-        right_most = np.max(idx[1], axis=0)
-        center = (left_most + right_most) // 2
-        # Set the length of line segment
-        fixed_length = 100
-        zero = np.zeros(shape=(320, 320), dtype=np.uint8)
-        zero[:, left_most: right_most] = 1
-        mask = zero
-        cluster_mask = line * mask
-        # show(cluster_mask * 25)
-        # continue
-        num_floor = np.max(cluster_mask)
-        # regress line per floor
-        ini_k = []
-        simple_line = []
-        level_point_list = []
-        l_lines_per_plane = []
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        fontScale = 1
-        thickness = 1
+        for id in range(nr_objects + 1):
 
-        for floor in range(1, num_floor + 1):
-            one_floor = (cluster_mask == floor).astype(np.uint8)
-            # show(one_floor * 255)
-            one_floor = denoise(one_floor)
-            # give up too small floor region
-            if np.sum(one_floor) < 500:
+            mask = (labeled == id).astype(np.uint8)
+            if np.sum(mask) > np.sum(mask * (segment == plane_type)):
                 continue
-            # Choose the largest floor region
-            # show(one_floor * 255)
+            if np.sum(mask) < 10000:
+                continue
+            # show(mask * 255)
+            idx = np.where(mask == 1)
+            # original_shape = im.shape
+            # im = cv2.resize(line, dsize=(480, 360))
+            # cluster_frame = cv2.imread(video_dir + file_name + '_level.png', cv2.IMREAD_GRAYSCALE) // 25
+            # range_frame =
+            # Find the left/right range
+            left_most = np.min(idx[1], axis=0)
+            right_most = np.max(idx[1], axis=0)
+            center = (left_most + right_most) // 2
+            # Set the length of line segment
+            fixed_length = 100
+            zero = np.zeros(shape=(320, 320), dtype=np.uint8)
+            zero[:, left_most: right_most] = 1
+            mask = zero
+            cluster_mask = line * mask
+            # show(cluster_mask * 25)
             # continue
-            one_floor = undesired_objects(one_floor)
-            # show(one_floor * 255)
-            idx = np.where(one_floor > 0)
-            # Find left/right range (overwrite the global l/r range here... )
-            # left_most = np.min(idx[1], axis=0)
-            # right_most = np.max(idx[1], axis=0)
-            # Collect point set {(x,y)}
-            x, y = np.where(one_floor > 0)
-            # x = np.expand_dims(x)
-            # point_list = np.concatenate([np.expand_dims(x, -1),np.expand_dims(y, -1)], axis=-1)
-            point_list = 1000 * x + y
-            if len(point_list) == 0:
-                continue
-            rand_list = np.random.choice(point_list, size=50, replace=True)
-            # print(rand_list)
-            rand_list = [(n % 1000, n // 1000) for n in rand_list]
-            level_point_list.append([rand_list, floor])
-            x = [p[0] for p in rand_list]
-            y = [p[1] for p in rand_list]
-            params = np.polyfit(x, y, deg=1)
-            f = np.poly1d(params)
-            params = np.polyfit(x, y, deg=1)
-            f = np.poly1d(params)
-            k = f(1.) - f(0.)
-            ini_k.append(k)
-            simple_line.append([[left_most, f(left_most)], [right_most, f(right_most)]])
-            this_line = [[left_most, int(f(left_most))], [right_most, int(f(right_most))], floor]
-            if validate_lines(this_line, l_lines_per_plane):
-                l_lines_per_plane.append(this_line)
-                cv2.line(im, pt1=(left_most, int(f(left_most))),
-                         pt2=(right_most, int(f(right_most))),
-                         thickness=5, color=vis_map[floor % 5])
-                check_mask = np.zeros(shape=(320, 320))
-                cv2.line(check_mask, pt1=(left_most, int(f(left_most))),
-                         pt2=(right_most, int(f(right_most))),
-                         thickness=1, color=1)
-                cv2.putText(im, str(floor),
-                            ((left_most + right_most) // 2, int(f((left_most + right_most) // 2))),
-                            font,
-                            fontScale, vis_map[floor % 5], 2, cv2.LINE_AA)
+            num_floor = np.max(cluster_mask)
+            # regress line per floor
+            ini_k = []
+            simple_line = []
+            level_point_list = []
+            l_lines_per_plane = []
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            fontScale = 1
+            thickness = 1
 
-            ''' uncommit following lines for vp constrainted optimization '''
-            # if len(simple_line) < 2:
-            #     continue
-            # [x, y] = intersectionPoint(simple_line[-1], simple_line[0])
-            # ini_k.append(x)
-            # ini_k.append(y)
-            # print(ini_k)
-            # import scipy.optimize as opt
-            #
-            # # ‘Nelder - Mead’
-            # # ‘Powell’ (see here
-            # # ‘CG’
-            # # ‘BFGS’
-            # # ‘Newton - CG’
-            # # ‘L - BFGS - B’
-            # # ‘TNC’
-            # # ‘COBYLA’
-            # # ‘SLSQP’
-            # # ‘trust - constr
-            # # ‘dogleg’
-            # # ‘trust - ncg’
-            # # ‘trust - exact’
-            # # ‘trust - krylov’
-            # def demo_func(x):
-            #     # print(x)
-            #     xv = x[0]
-            #     # print(xv)
-            #     yv = x[1]
-            #     # print(yv)
-            #     energy = 0.
-            #     k = []
-            #     for level in range(len(level_point_list)):
-            #         # print(x[level])
-            #         rand_list = level_point_list[level][0]
-            #         x = [p[0] for p in rand_list]
-            #         y = [p[1] for p in rand_list]
-            #         weight = [1 for p in rand_list]
-            #         x.append(xv)
-            #         y.append(yv)
-            #         weight.append(10)
-            #         params = np.polyfit(x, y, deg=1, w=weight, full=True)
-            #         energy += params[1]
-            #
-            #     return energy
-            # result = opt.minimize(demo_func, x0=[x, y])
-            # # sa = SA(func=demo_func, x0=[240, 180], T_max=1, T_min=1e-9, L=300, max_stay_counter=300)
-            # print(result)
-            # best_x, best_y = result.x[0], result.x[1]
-            # print('best_x:', best_x, 'best_y', best_y)
-            #
-            # for level in range(len(level_point_list)):
-            #     vpx = best_x
-            #     vpy = best_y
-            #     rand_list = level_point_list[level][0]
-            #     floor = level_point_list[level][1]
-            #     x = [p[0] for p in rand_list]
-            #     y = [p[1] for p in rand_list]
-            #     weight = [1 for p in rand_list]
-            #     x.append(vpx)
-            #     y.append(vpy)
-            #     weight.append(10)
-            #     params = np.polyfit(x, y, deg=1, w=weight, full=True)
-            #     f = np.poly1d(params[0])
-            #     this_line = [[left_most, int(f(left_most))], [right_most, int(f(right_most))], floor]
-            #     if validate(this_line, l_lines_per_plane):
-            #         l_lines_per_plane.append(this_line)
-            #         cv2.line(im, pt1=(left_most, int(f(left_most))), pt2=(right_most, int(f(right_most))),
-            #                  thickness=5, color=vis_map[floor % 5])
-            #         check_mask = np.zeros(shape=(320, 320))
-            #         cv2.line(check_mask, pt1=(left_most, int(f(left_most))),
-            #                  pt2=(right_most, int(f(right_most))),
-            #                  thickness=1, color=1)
-            #         cv2.putText(im, str(floor),
-            #                     ((left_most + right_most) // 2, int(f((left_most + right_most) // 2))),
-            #                     font,
-            #                     fontScale, vis_map[floor % 5], 2, cv2.LINE_AA)
-            #         cv2.line(im, pt1=(left_most, int(f(left_most))),
-            #                  pt2=(right_most, int(f(right_most))),
-            #                  thickness=2, color=vis_map[floor % 5])
+            for floor in range(1, num_floor + 1):
+                one_floor = (cluster_mask == floor).astype(np.uint8)
+                # show(one_floor * 255)
+                one_floor = denoise(one_floor)
+                # give up too small floor region
+                if np.sum(one_floor) < 500:
+                    continue
+                # Choose the largest floor region
+                # show(one_floor * 255)
+                # continue
+                one_floor = undesired_objects(one_floor)
+                # show(one_floor * 255)
+                idx = np.where(one_floor > 0)
+                # Find left/right range (overwrite the global l/r range here... )
+                # left_most = np.min(idx[1], axis=0)
+                # right_most = np.max(idx[1], axis=0)
+                # Collect point set {(x,y)}
+                x, y = np.where(one_floor > 0)
+                # x = np.expand_dims(x)
+                # point_list = np.concatenate([np.expand_dims(x, -1),np.expand_dims(y, -1)], axis=-1)
+                point_list = 1000 * x + y
+                if len(point_list) == 0:
+                    continue
+                rand_list = np.random.choice(point_list, size=50, replace=True)
+                # print(rand_list)
+                rand_list = [(n % 1000, n // 1000) for n in rand_list]
+                level_point_list.append([rand_list, floor])
+                x = [p[0] for p in rand_list]
+                y = [p[1] for p in rand_list]
+                params = np.polyfit(x, y, deg=1)
+                f = np.poly1d(params)
+                params = np.polyfit(x, y, deg=1)
+                f = np.poly1d(params)
+                k = f(1.) - f(0.)
+                ini_k.append(k)
+                simple_line.append([[left_most, f(left_most)], [right_most, f(right_most)]])
+                this_line = [[left_most, int(f(left_most))], [right_most, int(f(right_most))], floor]
+                if validate_lines(this_line, l_lines_per_plane):
+                    l_lines_per_plane.append(this_line)
+                    cv2.line(im, pt1=(left_most, int(f(left_most))),
+                             pt2=(right_most, int(f(right_most))),
+                             thickness=5, color=vis_map[floor % 5])
+                    check_mask = np.zeros(shape=(320, 320))
+                    cv2.line(check_mask, pt1=(left_most, int(f(left_most))),
+                             pt2=(right_most, int(f(right_most))),
+                             thickness=1, color=1)
+                    cv2.putText(im, str(floor),
+                                ((left_most + right_most) // 2, int(f((left_most + right_most) // 2))),
+                                font,
+                                fontScale, vis_map[floor % 5], 2, cv2.LINE_AA)
+
+                ''' uncommit following lines for vp constrainted optimization '''
+                # if len(simple_line) < 2:
+                #     continue
+                # [x, y] = intersectionPoint(simple_line[-1], simple_line[0])
+                # ini_k.append(x)
+                # ini_k.append(y)
+                # print(ini_k)
+                # import scipy.optimize as opt
+                #
+                # # ‘Nelder - Mead’
+                # # ‘Powell’ (see here
+                # # ‘CG’
+                # # ‘BFGS’
+                # # ‘Newton - CG’
+                # # ‘L - BFGS - B’
+                # # ‘TNC’
+                # # ‘COBYLA’
+                # # ‘SLSQP’
+                # # ‘trust - constr
+                # # ‘dogleg’
+                # # ‘trust - ncg’
+                # # ‘trust - exact’
+                # # ‘trust - krylov’
+                # def demo_func(x):
+                #     # print(x)
+                #     xv = x[0]
+                #     # print(xv)
+                #     yv = x[1]
+                #     # print(yv)
+                #     energy = 0.
+                #     k = []
+                #     for level in range(len(level_point_list)):
+                #         # print(x[level])
+                #         rand_list = level_point_list[level][0]
+                #         x = [p[0] for p in rand_list]
+                #         y = [p[1] for p in rand_list]
+                #         weight = [1 for p in rand_list]
+                #         x.append(xv)
+                #         y.append(yv)
+                #         weight.append(10)
+                #         params = np.polyfit(x, y, deg=1, w=weight, full=True)
+                #         energy += params[1]
+                #
+                #     return energy
+                # result = opt.minimize(demo_func, x0=[x, y])
+                # # sa = SA(func=demo_func, x0=[240, 180], T_max=1, T_min=1e-9, L=300, max_stay_counter=300)
+                # print(result)
+                # best_x, best_y = result.x[0], result.x[1]
+                # print('best_x:', best_x, 'best_y', best_y)
+                #
+                # for level in range(len(level_point_list)):
+                #     vpx = best_x
+                #     vpy = best_y
+                #     rand_list = level_point_list[level][0]
+                #     floor = level_point_list[level][1]
+                #     x = [p[0] for p in rand_list]
+                #     y = [p[1] for p in rand_list]
+                #     weight = [1 for p in rand_list]
+                #     x.append(vpx)
+                #     y.append(vpy)
+                #     weight.append(10)
+                #     params = np.polyfit(x, y, deg=1, w=weight, full=True)
+                #     f = np.poly1d(params[0])
+                #     this_line = [[left_most, int(f(left_most))], [right_most, int(f(right_most))], floor]
+                #     if validate(this_line, l_lines_per_plane):
+                #         l_lines_per_plane.append(this_line)
+                #         cv2.line(im, pt1=(left_most, int(f(left_most))), pt2=(right_most, int(f(right_most))),
+                #                  thickness=5, color=vis_map[floor % 5])
+                #         check_mask = np.zeros(shape=(320, 320))
+                #         cv2.line(check_mask, pt1=(left_most, int(f(left_most))),
+                #                  pt2=(right_most, int(f(right_most))),
+                #                  thickness=1, color=1)
+                #         cv2.putText(im, str(floor),
+                #                     ((left_most + right_most) // 2, int(f((left_most + right_most) // 2))),
+                #                     font,
+                #                     fontScale, vis_map[floor % 5], 2, cv2.LINE_AA)
+                #         cv2.line(im, pt1=(left_most, int(f(left_most))),
+                #                  pt2=(right_most, int(f(right_most))),
+                #                  thickness=2, color=vis_map[floor % 5])
     return im
 
 
